@@ -7,19 +7,19 @@ Espressif ESP32 ve Deneyap Kart tabanlı cihazlar için kapsamlı bir IoT yönet
 ### 🖼️ Arayüzden Görünümler
 
 #### 📊 Ana Dashboard
-![Dashboard](/Users/oguzhanigrek/Desktop/iot-t1/Dashboard.png)
+![Dashboard](Dashboard.png)
 
 #### 📈 Veri Analizi ve Grafikler
-![Analiz](/Users/oguzhanigrek/Desktop/iot-t1/analiz.png)
+![Analiz](analiz.png)
 
 #### 🔋 Cihaz Durumu ve Canlı Veri
-![Cihaz Durumu](/Users/oguzhanigrek/Desktop/iot-t1/Cihaz_Durumu.png)
+![Cihaz Durumu](Cihaz_Durumu.png)
 
 #### ⚙️ WebSerial Konfigüratör
-![Konfigurator](/Users/oguzhanigrek/Desktop/iot-t1/Konfigurator.png)
+![Konfigurator](Konfigurator.png)
 
 #### 🗄️ Veritabanı Yönetimi (Adminer)
-![DB Yönetimi](/Users/oguzhanigrek/Desktop/iot-t1/db_yonetimi.png)
+![DB Yönetimi](db_yonetimi.png)
 
 ---
 
