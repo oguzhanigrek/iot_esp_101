@@ -1,0 +1,60 @@
+# ==========================================
+# iot_esp_101 - Git Ignore Configuration
+# ==========================================
+
+# --- System Files ---
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# --- Python / Backend ---
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.mypy_cache/
+
+# --- ESP32 / PlatformIO ---
+esp32/.pio/
+esp32/.vscode/*.json
+!esp32/.vscode/extensions.json
+esp32/.vscode/.browse.c_cpp.db*
+esp32/.vscode/ipch/
+*.orig
+
+# --- Docker ---
+infrastructure/data/
+/data/
+docker-compose.override.yml
+
+# --- IDEs ---
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
