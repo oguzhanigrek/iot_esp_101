@@ -1,0 +1,146 @@
+services:
+  # ============================================
+  # PostgreSQL Database
+  # ============================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: iot_esp_101-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: iot_esp_101
+      POSTGRES_USER: iot_esp_101_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-iot_esp_101_secret_2024}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U iot_esp_101_user -d iot_esp_101" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - iot_esp_101-network
+
+  # ============================================
+  # Redis Cache
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: iot_esp_101-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - iot_esp_101-network
+
+  # ============================================
+  # Mosquitto MQTT Broker
+  # ============================================
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: iot_esp_101-mosquitto
+    restart: unless-stopped
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+    ports:
+      - "1883:1883" # MQTT
+      - "9001:9001" # WebSocket
+    healthcheck:
+      test: [ "CMD", "mosquitto_sub", "-t", "$$SYS/#", "-C", "1", "-i", "healthcheck", "-W", "3" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - iot_esp_101-network
+
+  # ============================================
+  # Backend API (Python FastAPI)
+  # ============================================
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: iot_esp_101-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://iot_esp_101_user:${POSTGRES_PASSWORD:-iot_esp_101_secret_2024}@postgres:5432/iot_esp_101
+      REDIS_URL: redis://redis:6379
+      MQTT_BROKER: mosquitto
+      MQTT_PORT: 1883
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mosquitto:
+        condition: service_healthy
+    networks:
+      - iot_esp_101-network
+    profiles:
+      - full
+
+  # ============================================
+  # Nginx Reverse Proxy
+  # ============================================
+  nginx:
+    image: nginx:alpine
+    container_name: iot_esp_101-nginx
+    restart: unless-stopped
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../frontend:/usr/share/nginx/html:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - iot_esp_101-network
+    profiles:
+      - full
+
+  # ============================================
+  # Adminer - Database Web UI (Development)
+  # ============================================
+  adminer:
+    image: adminer:latest
+    container_name: iot_esp_101-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - iot_esp_101-network
+    profiles:
+      - dev
+
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  postgres_data:
+  redis_data:
+  mosquitto_data:
+  mosquitto_log:
+
+    # ============================================
+    # Networks
+    # ============================================
+networks:
+  iot_esp_101-network:
+    driver: bridge

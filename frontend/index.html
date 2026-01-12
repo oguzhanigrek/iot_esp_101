@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espressif - ESP32 - iot_esp_101</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0f1a;
+            --bg-secondary: #111827;
+            --bg-card: #1f2937;
+            --bg-hover: #374151;
+            --accent-primary: #10b981;
+            --accent-secondary: #3b82f6;
+            --accent-warning: #f59e0b;
+            --accent-danger: #ef4444;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --border: #374151;
+            --terminal-bg: #000000;
+            --terminal-text: #00ff00;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 250px;
+            height: 100vh;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+        }
+
+        .logo {
+            padding: 20px;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-menu {
+            flex: 1;
+            padding: 15px 0;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border-left-color: var(--accent-primary);
+        }
+
+        .nav-item .icon {
+            font-size: 1.2rem;
+        }
+
+        .nav-section {
+            padding: 10px 20px 5px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 250px;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 15px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .header h1 {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .content {
+            padding: 25px;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* Cards */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-badge.running {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent-primary);
+        }
+
+        .status-badge.stopped {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--accent-danger);
+        }
+
+        .status-badge.warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--accent-warning);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-container {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .raw-config-viewer {
+            background: #0d1117;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: #e6edf3;
+            white-space: pre-wrap;
+            word-break: break-all;
+            line-height: 1.5;
+            border: 1px solid #30363d;
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            background: #059669;
+        }
+
+        .btn-secondary {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .btn-danger {
+            background: var(--accent-danger);
+            color: #fff;
+        }
+
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 0.8rem;
+        }
+
+        /* Terminal */
+        .terminal {
+            background: var(--terminal-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            overflow: hidden;
+        }
+
+        .terminal-header {
+            background: var(--bg-card);
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .terminal-output {
+            height: 400px;
+            overflow-y: auto;
+            padding: 15px;
+            color: var(--terminal-text);
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .terminal-input {
+            display: flex;
+            border-top: 1px solid var(--border);
+        }
+
+        .terminal-input input {
+            flex: 1;
+            background: var(--bg-card);
+            border: none;
+            padding: 12px 15px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 13px;
+        }
+
+        .terminal-input button {
+            padding: 12px 20px;
+            background: var(--accent-primary);
+            border: none;
+            color: #000;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        /* Port selector */
+        .port-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .port-selector select {
+            flex: 1;
+            padding: 10px 15px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        /* Container list */
+        .container-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .container-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .container-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .container-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .container-icon.postgres {
+            background: #336791;
+        }
+
+        .container-icon.redis {
+            background: #DC382D;
+        }
+
+        .container-icon.mqtt {
+            background: #3C5280;
+        }
+
+        .container-icon.adminer {
+            background: #34A853;
+        }
+
+        .container-details h3 {
+            font-size: 1rem;
+            margin-bottom: 3px;
+        }
+
+        .container-details p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .container-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* iframe container */
+        .iframe-container {
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            height: calc(100vh - 180px);
+        }
+
+        .iframe-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* Stats */
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 60px;
+            }
+
+            .sidebar .nav-item span:not(.icon) {
+                display: none;
+            }
+
+            .sidebar .logo span {
+                display: none;
+            }
+
+            .sidebar .nav-section {
+                display: none;
+            }
+
+            .main-content {
+                margin-left: 60px;
+            }
+        }
+
+        /* Alert Banner */
+        .browser-alert {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #000;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .browser-alert.show {
+            display: flex;
+        }
+
+        .browser-alert a {
+            color: #000;
+            text-decoration: underline;
+        }
+
+        /* Config Panel Styles */
+        .config-label {
+            display: block;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+            font-size: 0.85rem;
+        }
+
+        .config-input {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .config-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+
+        .config-section {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .config-section-title {
+            font-size: 0.9rem;
+            color: var(--accent-primary);
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+
+        .checkbox-label input {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent-primary);
+        }
+
+        /* Sensor Value Styles */
+        .sensor-value {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+        }
+
+        .sensor-icon {
+            font-size: 1.5rem;
+        }
+
+        .sensor-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .sensor-data {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--accent-primary);
+        }
+
+        /* Device Card */
+        .device-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .device-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.2);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Browser Compatibility Alert -->
+    <div class="browser-alert" id="browserAlert">
+        ⚠️ ESP32 Serial Terminal için <strong>Google Chrome</strong> veya <strong>Microsoft Edge</strong> kullanın.
+        Safari ve Firefox desteklenmemektedir.
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="logo">
+            <span>iot_esp_101</span>
+        </div>
+
+        <nav class="nav-menu">
+            <a class="nav-item active" data-page="dashboard">
+                <span>Dashboard</span>
+            </a>
+            <a class="nav-item" data-page="esp32">
+                <span>Cihaz Durumu</span>
+            </a>
+            <a class="nav-item" data-page="analyz">
+                <span>Analyz</span>
+            </a>
+
+
+            <a class="nav-item" data-page="database">
+                <span>Veritabanı</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <header class="header">
+            <h1 id="pageTitle">Dashboard</h1>
+            <div class="header-actions">
+            </div>
+        </header>
+
+        <div class="content">
+            <!-- Dashboard Page -->
+            <div id="page-dashboard" class="page active">
+                <div class="cards-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Docker Servisleri</span>
+                            <span class="status-badge running" id="dockerStatus">Çalışıyor</span>
+                        </div>
+                        <div class="stat-value" id="containerCount">0</div>
+                        <div class="stat-label">Aktif Container</div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">ESP32</span>
+                            <span class="status-badge warning" id="esp32Status">Bağlı Değil</span>
+                        </div>
+                        <div class="stat-value" id="serialPortCount">0</div>
+                        <div class="stat-label">Serial Port</div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">MQTT Broker</span>
+                            <span class="status-badge running" id="mqttStatus">Çevrimiçi</span>
+                        </div>
+                        <div class="stat-value">1883</div>
+                        <div class="stat-label">Port</div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">PostgreSQL</span>
+                            <span class="status-badge running" id="dbStatus">Çevrimiçi</span>
+                        </div>
+                        <div class="stat-value">5432</div>
+                        <div class="stat-label">Port</div>
+                    </div>
+                </div>
+
+                <h2 style="margin-bottom: 15px;">Servis Durumları</h2>
+                <div class="container-list" id="containerList">
+                    <p style="color: var(--text-secondary);">Yükleniyor...</p>
+                </div>
+            </div>
+
+            <!-- ESP32 Device Status Page -->
+            <div id="page-esp32" class="page">
+                <div class="card"
+                    style="margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-direction: row; padding: 15px 20px;">
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-primary);">Cihaz Bağlantısı</h3>
+                        <p style="margin: 5px 0 0; font-size: 0.85rem; color: var(--text-secondary);">Tarayıcı üzerinden
+                            doğrudan ESP32'ye bağlanın.</p>
+                    </div>
+                    <button class="btn btn-primary" id="connectBtn" onclick="connectWebSerial()">
+                        🔌 Cihaza Bağlan (WebSerial)
+                    </button>
+                </div>
+
+                <div class="cards-grid">
+                    <!-- Device Info Card -->
+                    <div class="card">
+                        <div class="card-title" style="margin-bottom: 20px;">Cihaz Bilgileri</div>
+                        <div style="display: grid; gap: 12px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">Cihaz ID:</span>
+                                <span id="statusDeviceId"
+                                    style="font-weight: 600; color: var(--accent-primary);">Bekleniyor...</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">IP Adresi:</span>
+                                <span id="statusIP">---</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">Firmware:</span>
+                                <span id="statusVersion">---</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">Sinyal (RSSI):</span>
+                                <span id="statusRSSI">---</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">Uptime:</span>
+                                <span id="statusUptime">---</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Config Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Canlı Konfigürasyon</span>
+                            <button class="btn btn-sm btn-secondary" onclick="showRawConfig()">Görüntüle</button>
+                        </div>
+                        <div style="display: grid; gap: 12px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">WiFi SSID:</span>
+                                <span id="statusSSID">---</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">MQTT Host:</span>
+                                <span id="statusMQTTHost">---</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">MQTT Port:</span>
+                                <span id="statusMQTTPort">---</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">Okuma Aralığı:</span>
+                                <span id="statusReadInterval">---</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-secondary);">Uyku Modu:</span>
+                                <span id="statusSleep">---</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="terminal" style="margin-top: 20px;">
+                    <div class="terminal-header">
+                        <span>Cihaz Logları (Anlık Durum)</span>
+                        <div>
+                            <button class="btn btn-sm btn-secondary"
+                                onclick="document.getElementById('statusLog').innerHTML=''">Temizle</button>
+                            <button class="btn btn-sm btn-danger" id="disconnectBtn" onclick="disconnectWebSerial()"
+                                style="display: none;">Bağlantıyı Kes</button>
+                        </div>
+                    </div>
+                    <div class="terminal-output" id="statusLog"
+                        style="height: 350px; font-family: monospace; font-size: 0.85rem;">
+                        Cihazdan gelen durum mesajları burada loglanacaktır...
+                    </div>
+                </div>
+
+                <!-- ESP32 Configuration Panel -->
+                <div class="card" id="esp32ConfigPanel" style="margin-top: 20px; display: none;">
+                    <div class="card-title" style="margin-bottom: 20px;">ESP32 Konfigürasyon</div>
+
+                    <!-- Device & Network Settings -->
+                    <div style="display: grid; gap: 15px; margin-bottom: 20px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div>
+                                <label class="config-label">Cihaz ID</label>
+                                <input type="text" id="configDeviceId" placeholder="örn: deneyap-001"
+                                    class="config-input">
+                            </div>
+                            <div>
+                                <label class="config-label">Okuma Aralığı (sn)</label>
+                                <input type="number" id="configReadInterval" value="30" min="5" max="3600"
+                                    class="config-input">
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div>
+                                <label class="config-label">WiFi SSID</label>
+                                <input type="text" id="configSSID" placeholder="WiFi ağ adı" class="config-input">
+                            </div>
+                            <div>
+                                <label class="config-label">WiFi Şifre</label>
+                                <input type="password" id="configPassword" placeholder="WiFi şifresi"
+                                    class="config-input">
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px;">
+                            <div>
+                                <label class="config-label">MQTT Host</label>
+                                <input type="text" id="configMQTTHost" placeholder="örn: 192.168.1.100"
+                                    class="config-input">
+                            </div>
+                            <div>
+                                <label class="config-label">MQTT Port</label>
+                                <input type="number" id="configMQTTPort" value="1883" class="config-input">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sensor Settings -->
+                    <div class="config-section">
+                        <div class="config-section-title">📡 Sensör Ayarları</div>
+                        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="sensorNem" checked> Nem
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="sensorSicaklik" checked> Sıcaklık
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="sensorUV" checked> UV
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="sensorYagmur" checked> Yağmur
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Power & Alarm Settings -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px;">
+                        <div class="config-section">
+                            <div class="config-section-title">💤 Güç Yönetimi</div>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="sleepEnabled"> Deep Sleep Aktif
+                                </label>
+                            </div>
+                            <div>
+                                <label class="config-label">Uyku Süresi (dk)</label>
+                                <input type="number" id="sleepMinutes" value="5" min="1" max="60" class="config-input">
+                            </div>
+                        </div>
+
+                        <div class="config-section">
+                            <div class="config-section-title">🚨 Alarm Eşikleri</div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px;">
+                                <div>
+                                    <label class="config-label">Nem Min %</label>
+                                    <input type="number" id="alarmNemMin" value="20" class="config-input">
+                                </div>
+                                <div>
+                                    <label class="config-label">Nem Max %</label>
+                                    <input type="number" id="alarmNemMax" value="80" class="config-input">
+                                </div>
+                                <div>
+                                    <label class="config-label">Sıcak Max °C</label>
+                                    <input type="number" id="alarmTempMax" value="40" class="config-input">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Settings -->
+                    <div class="config-section" style="margin-top: 15px;">
+                        <div class="config-section-title">🔧 Gelişmiş Ayarlar</div>
+                        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 10px;">
+                            <div>
+                                <label class="config-label">NTP Server</label>
+                                <input type="text" id="configNTP" value="pool.ntp.org" class="config-input">
+                            </div>
+                            <div>
+                                <label class="config-label">Timezone</label>
+                                <select id="configTimezone" class="config-input">
+                                    <option value="0">GMT+0</option>
+                                    <option value="1">GMT+1</option>
+                                    <option value="2">GMT+2</option>
+                                    <option value="3" selected>GMT+3</option>
+                                    <option value="4">GMT+4</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="config-label">Debug</label>
+                                <select id="configDebug" class="config-input">
+                                    <option value="0">Off</option>
+                                    <option value="1" selected>Error</option>
+                                    <option value="2">Info</option>
+                                    <option value="3">Verbose</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="config-label">LED</label>
+                                <select id="configLED" class="config-input">
+                                    <option value="1" selected>Açık</option>
+                                    <option value="0">Kapalı</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+                        <button class="btn btn-primary" onclick="sendAllConfig()">
+                            💾 Tüm Ayarları Kaydet
+                        </button>
+                        <button class="btn btn-secondary" onclick="sendESPCommand('GET_CONFIG')">
+                            📥 Ayarları Oku
+                        </button>
+                        <button class="btn btn-secondary" onclick="sendESPCommand('STATUS')">
+                            📊 Durum
+                        </button>
+                        <button class="btn btn-secondary" onclick="sendESPCommand('SCAN')">
+                            📶 WiFi Tara
+                        </button>
+                        <button class="btn btn-danger" onclick="sendESPCommand('RESTART')">
+                            🔄 Yeniden Başlat
+                        </button>
+                        <button class="btn btn-danger"
+                            onclick="if(confirm('Fabrika ayarlarına dönülsün mü?')) sendESPCommand('RESET')">
+                            ⚠️ Fabrika Ayarı
+                        </button>
+                    </div>
+
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 15px;">
+                        💡 Önce WebSerial veya Backend üzerinden bağlanın. "Tüm Ayarları Kaydet" tüm alanları tek
+                        seferde gönderir.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Database Page -->
+            <div id="page-database" class="page">
+                <div class="card">
+                    <div class="card-title" style="margin-bottom: 20px;">Veritabanı Yönetimi</div>
+                    <div style="display: grid; gap: 15px;">
+                        <div>
+                            <p style="color: var(--text-secondary); margin-bottom: 5px;">PostgreSQL Bağlantı Bilgileri:
+                            </p>
+                            <p><strong>Host:</strong> iot_esp_101-postgres (veya port 5432)</p>
+                            <p><strong>Database:</strong> iot_esp_101</p>
+                            <p><strong>User:</strong> iot_esp_101_user</p>
+                            <p><strong>Password:</strong> iot_esp_101_secret_2024</p>
+                        </div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
+                            <a href="http://localhost:8080" target="_blank" class="btn btn-primary"
+                                style="text-decoration: none;">🔗 Adminer'ı Aç</a>
+                            <a href="http://localhost:8080/?pgsql=iot_esp_101-postgres&username=iot_esp_101_user&db=iot_esp_101"
+                                target="_blank" class="btn btn-secondary" style="text-decoration: none;">Hızlı
+                                Bağlantı (iot_esp_101)</a>
+                        </div>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 10px;">
+                            💡 Adminer yeni sekmede açılacaktır. PostgreSQL seçin ve yukarıdaki bilgileri girin.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <!-- Analyz Page -->
+            <div id="page-analyz" class="page">
+                <div class="cards-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Sıcaklık (°C)</span>
+                        </div>
+                        <div style="height: 250px;">
+                            <canvas id="tempChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Nem (%)</span>
+                        </div>
+                        <div style="height: 250px;">
+                            <canvas id="humidityChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">UV İndeksi</span>
+                        </div>
+                        <div style="height: 250px;">
+                            <canvas id="uvChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Yağmur (Analog)</span>
+                        </div>
+                        <div style="height: 250px;">
+                            <canvas id="rainChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Toprak Nemi (%)</span>
+                        </div>
+                        <div style="height: 250px;">
+                            <canvas id="soilChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Config Viewer Modal -->
+    <div id="configModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 style="margin: 0; font-size: 1.1rem;">Ham Konfigürasyon (Raw Config)</h3>
+                <button class="btn btn-sm btn-secondary" onclick="closeModal()">Kapat</button>
+            </div>
+            <div class="modal-body">
+                <pre id="rawConfigContent"
+                    class="raw-config-viewer">Cihazdan henüz tam yapılandırma verisi alınmadı...</pre>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Kapat</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========================================
+        // Navigation
+        // ========================================
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const page = item.dataset.page;
+
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+
+                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+                document.getElementById(`page-${page}`).classList.add('active');
+
+                document.getElementById('pageTitle').textContent = item.querySelector('span:last-child').textContent;
+
+                // Sayfa değişince ilgili verileri yükle
+                if (page === 'esp32') refreshPorts();
+
+                if (page === 'analyz') initCharts();
+            });
+        });
+
+        // ========================================
+        // API Base
+        // ========================================
+        const API_BASE = '';  // Aynı host
+
+        // ========================================
+        // Analyz / Charts
+        // ========================================
+        let charts = {
+            temp: null,
+            humidity: null,
+            uv: null,
+            rain: null,
+            soil: null
+        };
+
+        const chartConfig = (label, color) => ({
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: label,
+                    data: [],
+                    borderColor: color,
+                    backgroundColor: color + '22',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { display: false },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#888' }
+                    }
+                },
+                animation: false
+            }
+        });
+
+        function initCharts() {
+            if (charts.temp) return; // Zaten başlatılmış
+
+            const ctxTemp = document.getElementById('tempChart').getContext('2d');
+            const ctxHum = document.getElementById('humidityChart').getContext('2d');
+            const ctxUv = document.getElementById('uvChart').getContext('2d');
+            const ctxRain = document.getElementById('rainChart').getContext('2d');
+            const ctxSoil = document.getElementById('soilChart').getContext('2d');
+
+            charts.temp = new Chart(ctxTemp, chartConfig('Sıcaklık', '#ef4444'));
+            charts.humidity = new Chart(ctxHum, chartConfig('Nem', '#3b82f6'));
+            charts.uv = new Chart(ctxUv, chartConfig('UV', '#f59e0b'));
+            charts.rain = new Chart(ctxRain, chartConfig('Yağmur', '#10b981'));
+            charts.soil = new Chart(ctxSoil, chartConfig('Toprak Nemi', '#8b5cf6'));
+        }
+
+        function updateCharts(data) {
+            if (!charts.temp) {
+                console.log("Initializing charts on first data...");
+                initCharts();
+            }
+
+            const time = new Date().toLocaleTimeString();
+
+            const pushData = (chart, value) => {
+                chart.data.labels.push(time);
+                chart.data.datasets[0].data.push(value);
+                if (chart.data.labels.length > 30) {
+                    chart.data.labels.shift();
+                    chart.data.datasets[0].data.shift();
+                }
+                chart.update();
+            };
+
+            if (data.sicaklik !== undefined) pushData(charts.temp, data.sicaklik);
+            if (data.nem !== undefined) pushData(charts.humidity, data.nem);
+            if (data.uv !== undefined) pushData(charts.uv, data.uv);
+            if (data.yagmur !== undefined) pushData(charts.rain, data.yagmur);
+            if (data.toprak_nem !== undefined) pushData(charts.soil, data.toprak_nem);
+        }
+
+        // ========================================
+        // Docker Functions
+        // ========================================
+        async function loadDockerContainers() {
+            try {
+                const res = await fetch(`${API_BASE}/api/docker/containers`);
+                const data = await res.json();
+
+                document.getElementById('containerCount').textContent = data.containers.filter(c => c.state === 'running').length;
+
+                const html = data.containers.map(c => {
+                    const isRunning = c.state === 'running';
+
+                    return `
+                        <div class="container-item">
+                            <div class="container-info">
+                                <div class="container-details">
+                                    <h3>${c.name}</h3>
+                                    <p>${c.image} • ${c.status}</p>
+                                </div>
+                            </div>
+                            <div class="container-actions">
+                                <span class="status-badge ${isRunning ? 'running' : 'stopped'}">${isRunning ? 'Çalışıyor' : 'Durdu'}</span>
+                                ${isRunning ?
+                            `<button class="btn btn-sm btn-secondary" onclick="restartContainer('${c.name}')">Yeniden Başlat</button>
+                                     <button class="btn btn-sm btn-danger" onclick="stopContainer('${c.name}')">Durdur</button>` :
+                            `<button class="btn btn-sm btn-primary" onclick="startContainer('${c.name}')">Başlat</button>`
+                        }
+                                <button class="btn btn-sm btn-secondary" onclick="showLogs('${c.name}')">Loglar</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                document.getElementById('containerList').innerHTML = html;
+            } catch (e) {
+                console.error('Docker error:', e);
+                document.getElementById('dockerStatus').className = 'status-badge stopped';
+                document.getElementById('dockerStatus').textContent = 'Hata';
+            }
+        }
+
+        async function restartContainer(name) {
+            if (!confirm(`${name} yeniden başlatılsın mı?`)) return;
+            try {
+                await fetch(`${API_BASE}/api/docker/containers/${name}/restart`, { method: 'POST' });
+                await loadDockerContainers();
+            } catch (e) { alert('Hata: ' + e.message); }
+        }
+
+        async function stopContainer(name) {
+            if (!confirm(`${name} durdurulsun mu?`)) return;
+            try {
+                await fetch(`${API_BASE}/api/docker/containers/${name}/stop`, { method: 'POST' });
+                await loadDockerContainers();
+            } catch (e) { alert('Hata: ' + e.message); }
+        }
+
+        async function startContainer(name) {
+            try {
+                await fetch(`${API_BASE}/api/docker/containers/${name}/start`, { method: 'POST' });
+                await loadDockerContainers();
+            } catch (e) { alert('Hata: ' + e.message); }
+        }
+
+        async function showLogs(name) {
+            try {
+                const res = await fetch(`${API_BASE}/api/docker/containers/${name}/logs?tail=50`);
+                const data = await res.json();
+                alert(data.logs || 'Log bulunamadı');
+            } catch (e) { alert('Hata: ' + e.message); }
+        }
+
+        function appendTerminal(text) {
+            const output = document.getElementById('statusLog');
+            if (output) {
+                // Eğer JSON_STATUS geliyorsa bunu parse et
+                if (text.includes('JSON_STATUS:')) {
+                    try {
+                        const jsonStr = text.split('JSON_STATUS:')[1].trim();
+                        const data = JSON.parse(jsonStr);
+                        updateDeviceStatusUI(data);
+                        output.innerHTML += `<span style="color: var(--accent-primary)">[SİSTEM] Cihaz bilgileri güncellendi.</span>\n`;
+                    } catch (e) {
+                        console.error('Serial JSON parse error:', e);
+                        output.innerText += text;
+                    }
+                } else {
+                    output.innerText += text;
+                }
+                output.scrollTop = output.scrollHeight;
+            }
+        }
+
+        let lastDeviceData = null;
+
+        function updateDeviceStatusUI(dev) {
+            lastDeviceData = dev; // Store for raw viewer
+            if (document.getElementById('page-esp32').style.display !== 'none') {
+                document.getElementById('statusDeviceId').textContent = dev.deviceId || '---';
+                document.getElementById('statusIP').textContent = dev.ip || '---';
+                document.getElementById('statusVersion').textContent = 'v' + (dev.version || '1.0.0');
+                document.getElementById('statusRSSI').textContent = (dev.rssi || '---') + ' dBm';
+                document.getElementById('statusUptime').textContent = dev.uptime || '---';
+
+                // Form alanlarını da doldur (Eşleşme sağla)
+                if (dev.deviceId) document.getElementById('configDeviceId').value = dev.deviceId;
+
+                if (dev.config) {
+                    // Cihaz Bilgileri Kartı (Read-only)
+                    document.getElementById('statusSSID').textContent = dev.config.ssid || '---';
+                    document.getElementById('statusMQTTHost').textContent = dev.config.mqtt_host || '---';
+                    document.getElementById('statusMQTTPort').textContent = dev.config.mqtt_port || '---';
+                    document.getElementById('statusReadInterval').textContent = (dev.config.read_interval || '30') + ' sn';
+                    document.getElementById('statusSleep').textContent = dev.config.sleep_mode || 'Deaktif';
+
+                    // Konfigürasyon Paneli (İnteraktif Form)
+                    if (dev.config.ssid) document.getElementById('configSSID').value = dev.config.ssid;
+                    if (dev.config.read_interval) document.getElementById('configReadInterval').value = dev.config.read_interval;
+                    if (dev.config.mqtt_host) document.getElementById('configMQTTHost').value = dev.config.mqtt_host;
+                    if (dev.config.mqtt_port) document.getElementById('configMQTTPort').value = dev.config.mqtt_port;
+
+                    // Sensör Checkbox'ları
+                    if (Array.isArray(dev.config.sensors)) {
+                        document.getElementById('sensorNem').checked = dev.config.sensors.includes('nem');
+                        document.getElementById('sensorSicaklik').checked = dev.config.sensors.includes('sicaklik');
+                        document.getElementById('sensorUV').checked = dev.config.sensors.includes('uv');
+                        document.getElementById('sensorYagmur').checked = dev.config.sensors.includes('yagmur');
+                    }
+
+                    // Güç Yönetimi
+                    if (dev.config.sleep_enabled !== undefined) document.getElementById('sleepEnabled').checked = dev.config.sleep_enabled;
+                    if (dev.config.sleep_minutes) document.getElementById('sleepMinutes').value = dev.config.sleep_minutes;
+
+                    // Alarm Eşikleri
+                    if (dev.config.alarm_nem_min !== undefined) document.getElementById('alarmNemMin').value = dev.config.alarm_nem_min;
+                    if (dev.config.alarm_nem_max !== undefined) document.getElementById('alarmNemMax').value = dev.config.alarm_nem_max;
+                    if (dev.config.alarm_temp_max !== undefined) document.getElementById('alarmTempMax').value = dev.config.alarm_temp_max;
+
+                    // Gelişmiş Ayarlar
+                    if (dev.config.ntp_server) document.getElementById('configNTP').value = dev.config.ntp_server;
+                    if (dev.config.timezone !== undefined) document.getElementById('configTimezone').value = dev.config.timezone;
+                    if (dev.config.debug_level !== undefined) document.getElementById('configDebug').value = dev.config.debug_level;
+                    if (dev.config.led_enabled !== undefined) document.getElementById('configLED').value = dev.config.led_enabled ? "1" : "0";
+                }
+
+                // EĞER SENSÖR VERİSİ VARSA ANALİZ GRAFİKLERİNİ GÜNCELLE
+                if (dev.sensors) {
+                    updateCharts(dev.sensors);
+                }
+            }
+        }
+
+        function clearTerminal() {
+            document.getElementById('statusLog').innerHTML = '';
+        }
+
+        // ========================================
+        // WebSerial API (Modern browsers)
+        // ========================================
+        let webSerialPort = null;
+        let webSerialReader = null;
+        let webSerialWriter = null;
+
+        let serialLineBuffer = '';
+
+        async function connectWebSerial() {
+            if (!('serial' in navigator)) {
+                alert('Bu tarayıcı WebSerial API desteklemiyor. Chrome veya Edge kullanın.');
+                return;
+            }
+
+            try {
+                webSerialPort = await navigator.serial.requestPort();
+                await webSerialPort.open({ baudRate: 115200 });
+
+                appendTerminal('\n[WEBSERIAL BAĞLANDI]\n');
+                document.getElementById('connectBtn').textContent = '🔌 Bağlı';
+                document.getElementById('connectBtn').classList.replace('btn-primary', 'btn-secondary');
+                document.getElementById('disconnectBtn').style.display = 'inline-block';
+
+                // Dashboard status sync
+                const espStatus = document.getElementById('esp32Status');
+                if (espStatus) {
+                    espStatus.textContent = 'Bağlı';
+                    espStatus.className = 'status-badge running';
+                }
+
+                // Show Config Panel
+                const configPanel = document.getElementById('esp32ConfigPanel');
+                if (configPanel) configPanel.style.display = 'block';
+
+                refreshPorts();
+
+                // Bağlantı kurulduğunda otomatik olarak durum bilgisi iste
+                setTimeout(() => {
+                    sendESPCommand('STATUS');
+                    // MQTT aboneliğini tazele (eğer kopmuşsa)
+                    subscribeMQTT();
+                }, 1000);
+
+                // Okuma döngüsü
+                const decoder = new TextDecoderStream();
+                webSerialPort.readable.pipeTo(decoder.writable);
+                webSerialReader = decoder.readable.getReader();
+
+                while (true) {
+                    const { value, done } = await webSerialReader.read();
+                    if (done) break;
+
+                    serialLineBuffer += value;
+                    const lines = serialLineBuffer.split('\n');
+                    serialLineBuffer = lines.pop(); // Son (yarım kalmış olabilecek) parçayı sakla
+
+                    for (let line of lines) {
+                        appendTerminal(line + '\n');
+                    }
+                }
+            } catch (e) {
+                console.error('WebSerial error:', e);
+                appendTerminal('\n[HATA] ' + e.message + '\n');
+            }
+        }
+
+        async function disconnectWebSerial() {
+            if (webSerialReader) {
+                try {
+                    await webSerialReader.cancel();
+                } catch (e) { }
+                webSerialReader = null;
+            }
+            if (webSerialPort) {
+                try {
+                    await webSerialPort.close();
+                } catch (e) { }
+                webSerialPort = null;
+            }
+            appendTerminal('\n[BAĞLANTI KAPANDI]\n');
+            document.getElementById('connectBtn').textContent = '🔌 Cihaza Bağlan (WebSerial)';
+            document.getElementById('connectBtn').classList.replace('btn-secondary', 'btn-primary');
+            document.getElementById('disconnectBtn').style.display = 'none';
+
+            // Dashboard status sync
+            const espStatus = document.getElementById('esp32Status');
+            if (espStatus) {
+                espStatus.textContent = 'Bağlı Değil';
+                espStatus.className = 'status-badge warning';
+            }
+
+            // Hide Config Panel
+            const configPanel = document.getElementById('esp32ConfigPanel');
+            if (configPanel) configPanel.style.display = 'none';
+
+            refreshPorts();
+        }
+
+        async function refreshPorts() {
+            if (!('serial' in navigator)) return;
+            try {
+                const ports = await navigator.serial.getPorts();
+                const count = ports.length;
+                const countEl = document.getElementById('serialPortCount');
+                if (countEl) countEl.textContent = count;
+
+                // Eğer hiç port yoksa ve bağlı değilsek durumu güncelle (opsiyonel)
+                if (count === 0 && !webSerialPort) {
+                    const espStatus = document.getElementById('esp32Status');
+                    if (espStatus) {
+                        espStatus.textContent = 'Bağlı Değil';
+                        espStatus.className = 'status-badge warning';
+                    }
+                }
+            } catch (e) {
+                console.error('Refresh ports error:', e);
+            }
+        }
+
+        // ========================================
+        // Refresh All
+        // ========================================
+        function refreshAll() {
+            loadDockerContainers();
+            refreshPorts();
+        }
+
+        // ========================================
+        // ESP32 Configuration Functions
+        // ========================================
+
+        async function writeToSerial(text) {
+            if (!webSerialPort || !webSerialPort.writable) {
+                alert('Önce WebSerial ile ESP32\'ye bağlanın!');
+                return false;
+            }
+
+            try {
+                const encoder = new TextEncoder();
+                const writer = webSerialPort.writable.getWriter();
+                await writer.write(encoder.encode(text + '\n'));
+                writer.releaseLock();
+                appendTerminal('> ' + text + '\n');
+                return true;
+            } catch (e) {
+                console.error('Write error:', e);
+                appendTerminal('[HATA] Yazma hatası: ' + e.message + '\n');
+                return false;
+            }
+        }
+
+        function sendESPCommand(cmd) {
+            writeToSerial(cmd);
+        }
+
+        function sendWiFiConfig() {
+            const ssid = document.getElementById('configSSID').value.trim();
+            const password = document.getElementById('configPassword').value;
+
+            if (!ssid) {
+                alert('WiFi SSID girin!');
+                return;
+            }
+            if (!password) {
+                alert('WiFi şifresi girin!');
+                return;
+            }
+
+            const cmd = `SET_WIFI:${ssid},${password}`;
+            writeToSerial(cmd);
+        }
+
+        function sendMQTTConfig() {
+            const host = document.getElementById('configMQTTHost').value.trim();
+            const port = document.getElementById('configMQTTPort').value || '1883';
+
+            if (!host) {
+                alert('MQTT Host girin!');
+                return;
+            }
+
+            const cmd = `SET_MQTT:${host},${port}`;
+            writeToSerial(cmd);
+        }
+
+        async function sendAllConfig() {
+            if (!webSerialPort || !webSerialPort.writable) {
+                alert('Önce WebSerial ile ESP32\'ye bağlanın!');
+                return;
+            }
+
+            // Device ID
+            const deviceId = document.getElementById('configDeviceId').value.trim();
+            if (deviceId) {
+                await writeToSerial(`SET_DEVICE_ID:${deviceId}`);
+                await delay(100);
+            }
+
+            // WiFi
+            const ssid = document.getElementById('configSSID').value.trim();
+            const password = document.getElementById('configPassword').value;
+            if (ssid && password) {
+                await writeToSerial(`SET_WIFI:${ssid},${password}`);
+                await delay(100);
+            }
+
+            // MQTT
+            const mqttHost = document.getElementById('configMQTTHost').value.trim();
+            const mqttPort = document.getElementById('configMQTTPort').value || '1883';
+            if (mqttHost) {
+                await writeToSerial(`SET_MQTT:${mqttHost},${mqttPort}`);
+                await delay(100);
+            }
+
+            // Read Interval
+            const readInterval = document.getElementById('configReadInterval').value;
+            if (readInterval) {
+                await writeToSerial(`SET_READ_INTERVAL:${readInterval}`);
+                await delay(100);
+            }
+
+            // Sensors
+            const nem = document.getElementById('sensorNem').checked ? '1' : '0';
+            const sicaklik = document.getElementById('sensorSicaklik').checked ? '1' : '0';
+            const uv = document.getElementById('sensorUV').checked ? '1' : '0';
+            const yagmur = document.getElementById('sensorYagmur').checked ? '1' : '0';
+            await writeToSerial(`SET_SENSORS:${nem},${sicaklik},${uv},${yagmur}`);
+            await delay(100);
+
+            // Sleep
+            const sleepEnabled = document.getElementById('sleepEnabled').checked ? '1' : '0';
+            const sleepMinutes = document.getElementById('sleepMinutes').value || '5';
+            await writeToSerial(`SET_SLEEP:${sleepEnabled},${sleepMinutes}`);
+            await delay(100);
+
+            // Alarms
+            const nemMin = document.getElementById('alarmNemMin').value || '20';
+            const nemMax = document.getElementById('alarmNemMax').value || '80';
+            const tempMax = document.getElementById('alarmTempMax').value || '40';
+            await writeToSerial(`SET_ALARMS:${nemMin},${nemMax},${tempMax}`);
+            await delay(100);
+
+            // NTP
+            const ntpServer = document.getElementById('configNTP').value || 'pool.ntp.org';
+            const timezone = document.getElementById('configTimezone').value || '3';
+            await writeToSerial(`SET_NTP:${ntpServer},${timezone}`);
+            await delay(100);
+
+            // Debug
+            const debugLevel = document.getElementById('configDebug').value || '1';
+            await writeToSerial(`SET_DEBUG:${debugLevel}`);
+            await delay(100);
+
+            // LED
+            const ledEnabled = document.getElementById('configLED').value || '1';
+            await writeToSerial(`SET_LED:${ledEnabled}`);
+
+            appendTerminal('\n[CONFIG] Tüm ayarlar gönderildi!\n');
+            alert('Tüm ayarlar gönderildi! Uygulamak için "Yeniden Başlat" yapın.');
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function showRawConfig() {
+            const modal = document.getElementById('configModal');
+            const content = document.getElementById('rawConfigContent');
+
+            if (lastDeviceData) {
+                content.textContent = JSON.stringify(lastDeviceData, null, 4);
+            } else {
+                content.textContent = "Bağlı cihazdan henüz veri alınamadı.";
+            }
+
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('configModal').classList.remove('active');
+        }
+
+        // Modal dışına tıklayınca kapat
+        window.onclick = (event) => {
+            const modal = document.getElementById('configModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        };
+
+        // ========================================
+        // Devices Functions
+        // ========================================
+        // ========================================
+        // Devices & MQTT Functions
+        // ========================================
+        let activeDevices = {};
+        let mqttWS = null;
+
+
+        async function checkMQTTStatus() {
+            try {
+                const res = await fetch(`${API_BASE}/api/mqtt/status`);
+                const data = await res.json();
+                const detailEl = document.getElementById('mqttStatusDetail');
+                const badgeEl = document.getElementById('mqttStatus');
+
+                if (detailEl) detailEl.textContent = data.status === 'online' ? '✅ Çevrimiçi' : '⚠️ Çevrimdışı';
+                if (badgeEl) {
+                    badgeEl.className = 'status-badge ' + (data.status === 'online' ? 'running' : 'stopped');
+                    badgeEl.textContent = data.status === 'online' ? 'Çevrimiçi' : 'Çevrimdışı';
+                }
+            } catch (e) {
+                const detailEl = document.getElementById('mqttStatusDetail');
+                if (detailEl) detailEl.textContent = '❌ Kontrol edilemedi';
+            }
+        }
+
+        function subscribeMQTT() {
+            if (mqttWS) {
+                if (mqttWS.readyState === WebSocket.OPEN || mqttWS.readyState === WebSocket.CONNECTING) return;
+                mqttWS.close();
+            }
+
+            const wsUrl = `ws://${location.host}/ws/mqtt`;
+            mqttWS = new WebSocket(wsUrl);
+
+            mqttWS.onopen = () => {
+                console.log('[MQTT] WebSocket bağlantısı kuruldu.');
+            };
+
+            mqttWS.onmessage = (e) => {
+                const msg = JSON.parse(e.data);
+
+                // Eğer cihaz durum mesajıysa hafızaya al
+                if (msg.topic.includes('/status') && msg.payload.deviceId) {
+                    const dev = msg.payload;
+                    activeDevices[dev.deviceId] = {
+                        deviceId: dev.deviceId,
+                        ip: dev.ip,
+                        status: dev.status,
+                        version: dev.version,
+                        rssi: dev.rssi,
+                        uptime: dev.uptime,
+                        config: dev.config,
+                        sensors: dev.sensors || {},
+                        lastSeen: Date.now()
+                    };
+                    if (document.getElementById('page-esp32').style.display !== 'none') {
+                        document.getElementById('statusDeviceId').textContent = dev.deviceId;
+                        document.getElementById('statusIP').textContent = dev.ip || '---';
+                        document.getElementById('statusVersion').textContent = 'v' + (dev.version || '1.0.0');
+                        document.getElementById('statusRSSI').textContent = (dev.rssi || '---') + ' dBm';
+                        document.getElementById('statusUptime').textContent = dev.uptime || '---';
+
+                        if (dev.config) {
+                            document.getElementById('statusSSID').textContent = dev.config.ssid || '---';
+                            document.getElementById('statusMQTTHost').textContent = dev.config.mqtt_host || '---';
+                            document.getElementById('statusMQTTPort').textContent = dev.config.mqtt_port || '---';
+                            document.getElementById('statusReadInterval').textContent = (dev.config.read_interval || '30') + ' sn';
+                            document.getElementById('statusSleep').textContent = dev.config.sleep_mode || 'Deaktif';
+                        }
+
+                        // Log alanına ekle
+                        const statusLog = document.getElementById('statusLog');
+                        const timeStr = new Date().toLocaleTimeString();
+                        statusLog.innerHTML += `[${timeStr}] DURUM: ${dev.status.toUpperCase()} | IP: ${dev.ip} | RSSI: ${dev.rssi}\n`;
+                        statusLog.scrollTop = statusLog.scrollHeight;
+                    }
+                }
+
+                // Eğer sensör verisi ise grafikleri güncelle
+                if (msg.topic.includes('/sensors')) {
+                    const sensorData = msg.payload.data || msg.payload;
+                    updateCharts(sensorData);
+                }
+            };
+
+            mqttWS.onclose = () => {
+                console.log('[MQTT] WebSocket bağlantısı kapandı. 5sn sonra tekrar denenecek...');
+                setTimeout(subscribeMQTT, 5000);
+            };
+
+            mqttWS.onerror = (e) => {
+                console.error('[MQTT] WebSocket hatası:', e);
+            };
+        }
+
+        // ========================================
+        // Browser Compatibility Check
+        // ========================================
+        function checkBrowserCompatibility() {
+            const isChrome = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent);
+            const isEdge = /Edg/.test(navigator.userAgent);
+            const isSupported = isChrome || isEdge;
+
+            if (!isSupported) {
+                document.getElementById('browserAlert').classList.add('show');
+                document.getElementById('webserialBtn').disabled = true;
+                document.getElementById('webserialBtn').textContent = '❌ WebSerial Desteklenmiyor';
+                document.getElementById('webserialInfo').innerHTML = '<span style="color: var(--accent-danger);">⚠️ Bu tarayıcı WebSerial API desteklemiyor!</span><br>Lütfen <strong>Google Chrome</strong> veya <strong>Microsoft Edge</strong> kullanın.';
+            }
+            return isSupported;
+        }
+
+        // ========================================
+        // Initial Load
+        // ========================================
+        async function initApp() {
+            console.log("Uygulama başlatılıyor...");
+
+            // Temel verileri yükle
+            loadDockerContainers();
+            checkMQTTStatus();
+            refreshPorts();
+
+            // Arka plan servislerini başlat
+            subscribeMQTT();
+            initCharts();
+
+            // Periyodik güncellemeler
+            setInterval(loadDockerContainers, 10000);
+            setInterval(checkMQTTStatus, 30000);
+            setInterval(refreshPorts, 5000);
+        }
+
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+
+</html>

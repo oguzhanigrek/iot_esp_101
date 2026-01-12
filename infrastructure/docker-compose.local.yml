@@ -1,0 +1,105 @@
+# iot_esp_101 Sistemi - Yerel Geliştirme
+# Mac üzerinde Docker ile çalıştırma
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: iot_esp_101-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: iot_esp_101
+      POSTGRES_USER: iot_esp_101_user
+      POSTGRES_PASSWORD: iot_esp_101_secret_2024
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U iot_esp_101_user -d iot_esp_101" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: iot_esp_101-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Mosquitto MQTT Broker
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: iot_esp_101-mosquitto
+    restart: unless-stopped
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+
+  # Adminer - Database Web UI
+  adminer:
+    image: adminer:latest
+    container_name: iot_esp_101-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+
+  # Backend API
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: iot_esp_101-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - postgres
+      - redis
+      - mosquitto
+    environment:
+      - DATABASE_URL=postgresql://iot_esp_101_user:iot_esp_101_secret_2024@iot_esp_101-postgres:5432/iot_esp_101
+      - REDIS_URL=redis://iot_esp_101-redis:6379
+      - MQTT_HOST=iot_esp_101-mosquitto
+      - MQTT_PORT=1883
+
+  # Nginx - Frontend & Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: iot_esp_101-nginx
+    restart: unless-stopped
+    volumes:
+      - ../frontend:/usr/share/nginx/html:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "3000:80"
+    depends_on:
+      - adminer
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+  mosquitto_data:
+  mosquitto_log:
+
+
